@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "838600922546",
+    "project_id": "where-6c138",
+    "storage_bucket": "where-6c138.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:838600922546:android:ddb2033234fe538e8840ab",
+        "android_client_info": {
+          "package_name": "com.junjieyang.where"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "838600922546-sliudb4ru288qctq7h2upj69cqrm7uaf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.junjieyang.where",
+            "certificate_hash": "3f670e6911cfc0ac982a686aff08e4cb7a5e7c31"
+          }
+        },
+        {
+          "client_id": "838600922546-qdjvr2n9j0qjjmne3lj8evvt65a96dp4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdYRUUYYMurGoE7XgjFQvA71YsZQE8j3o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "838600922546-qdjvr2n9j0qjjmne3lj8evvt65a96dp4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "838600922546-uchlu00ok198lukf1a0apsa2pokfrqjl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.junjieyang.where"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

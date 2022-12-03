@@ -1,115 +1,141 @@
+import 'package:background_fetch/background_fetch.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:lottie/lottie.dart';
+import 'package:social_login_buttons/social_login_buttons.dart';
+import 'package:where/bloc/login_bloc.dart';
+import 'package:where/home.dart';
+import 'package:where/service/firestore_service.dart';
+
+import 'firebase_options.dart';
+import 'model/member.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ).then((value) {
+    runApp(FirebaseAuth.instance.currentUser == null
+        ? const Login()
+        : const Home());
+  }, onError: (e) {
+    if (kDebugMode) {
+      print(e.toString());
+    }
+    runApp(const LoginFailedWidget());
+  });
+  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+// [Android-only] This "Headless Task" is run when the Android app is terminated with `enableHeadless: true`
+// Be sure to annotate your callback function to avoid issues in release mode on Flutter >= 3.3.0
+@pragma('vm:entry-point')
+void backgroundFetchHeadlessTask(HeadlessTask task) async {
+  String taskId = task.taskId;
+  bool isTimeout = task.timeout;
+  if (isTimeout) {
+    // This task has exceeded its allowed running-time.
+    // You must stop what you're doing and immediately .finish(taskId)
+    print("[BackgroundFetch] Headless task timed-out: $taskId");
+    BackgroundFetch.finish(taskId);
+    return;
+  }
+  print('[BackgroundFetch] Headless event received.');
+  final p = await Geolocator.getCurrentPosition();
+  await _updateMember(p);
+  BackgroundFetch.finish(taskId);
+}
 
-  // This widget is the root of your application.
+Future<void> _updateMember(Position p) async {
+  if (FirebaseAuth.instance.currentUser == null) {
+    return;
+  }
+  Member member = Member(
+    lat: p.latitude,
+    lng: p.longitude,
+    timestampInMs: p.timestamp?.millisecondsSinceEpoch ?? -1,
+    name: FirebaseAuth.instance.currentUser?.displayName ?? '',
+    url: FirebaseAuth.instance.currentUser?.photoURL ?? '',
+    id: FirebaseAuth.instance.currentUser?.uid ?? '',
+  );
+
+  await FireStoreService().updateMember(member);
+}
+
+class Login extends StatelessWidget {
+  const Login({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Column(
+          children: [
+            Expanded(
+                flex: 4, child: Lottie.asset('assets/location_share.json')),
+            Flexible(
+              fit: FlexFit.loose,
+              flex: 2,
+              child: BlocProvider(
+                create: (context) => LoginBloc(
+                    googleSignIn: GoogleSignIn(),
+                    firebaseAuth: FirebaseAuth.instance),
+                child: const LoginButton(),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+}
+
+class LoginButton extends StatelessWidget {
+  const LoginButton({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<LoginBloc, LoginState>(
+      listener: (context, state) {
+        if (state is LoginFailed) {
+          print(state.errorMsg);
+        }
+
+        if (state is LoginSuccess) {
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (BuildContext context) => const Home()));
+        }
+      },
+      child: FittedBox(
+        child: BlocBuilder<LoginBloc, LoginState>(builder: (context, state) {
+          if (state is LoginLoading) {
+            return const CircularProgressIndicator();
+          }
+
+          return SocialLoginButton(
+            buttonType: SocialLoginButtonType.google,
+            onPressed: () {
+              // with extensions
+              context.read<LoginBloc>().add(OnGoogleButtonPressed());
+            },
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class LoginFailedWidget extends StatelessWidget {
+  const LoginFailedWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text("Login Failed");
   }
 }
